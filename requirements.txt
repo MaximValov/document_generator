@@ -3,5 +3,4 @@ pandas
 numpy
 docx
 pillow
-tempfile
 base64
