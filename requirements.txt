@@ -1,0 +1,8 @@
+streamlit as st
+pandas as pd
+numpy as np
+docx
+io
+pillow
+tempfile
+base64
