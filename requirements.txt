@@ -1,6 +1,6 @@
-streamlit as st
-pandas as pd
-numpy as np
+streamlit
+pandas
+numpy
 docx
 io
 pillow
