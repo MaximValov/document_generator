@@ -2,7 +2,6 @@ streamlit
 pandas
 numpy
 docx
-io
 pillow
 tempfile
 base64
