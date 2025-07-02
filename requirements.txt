@@ -2,5 +2,5 @@ streamlit
 pandas
 numpy
 docx
-pillow
+PIL
 exceptions
