@@ -294,20 +294,27 @@ def main():
                             show_filename
                         )
                         st.success("Image table created successfully!")
+
+                        # Extract the name of the first image file without extension
+                        first_image_name = os.path.splitext(image_files[0].name)[0]
+                        file_name = f"{first_image_name}.docx"
+
+                        # Save the document to a BytesIO buffer
                         buffer = BytesIO()
                         doc.save(buffer)
                         buffer.seek(0)
+
+                        # Provide the document for download
                         st.download_button(
                             label="Download Word Document",
                             data=buffer,
-                            # file_name="Image_Table.docx",
-                            file_name=str(file_name)+"_Table.docx",
+                            file_name=file_name,
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                             key="download_img_table"
                         )
                     except Exception as e:
                         st.error(f"Error creating image table: {str(e)}")
-
+                        
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
     main()
