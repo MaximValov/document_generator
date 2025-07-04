@@ -300,7 +300,8 @@ def main():
                         st.download_button(
                             label="Download Word Document",
                             data=buffer,
-                            file_name="Image_Table.docx",
+                            # file_name="Image_Table.docx",
+                            file_name=str(file_name)+"_Table.docx",
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                             key="download_img_table"
                         )
