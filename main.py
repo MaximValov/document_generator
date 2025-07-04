@@ -266,18 +266,18 @@ def main():
                 with cols[1]:
                     table_cols = st.number_input("Table columns", 1, 10, 2, key="img_cols")
                 with cols[2]:
-                    cell_width_cm = st.number_input("Cell width (cm)", 1.0, 20.0, 8.46, 0.1, key="cell_width_cm")
+                    cell_width_cm = st.number_input("Cell width (cm)", 1.0, 20.0, 8.75, 0.1, key="cell_width_cm")
 
                 cols = st.columns(2)
                 with cols[0]:
-                    width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm")
+                    width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 8.46, 0.1, key="img_width_cm")
                 with cols[1]:
                     fixed_height = st.checkbox("Fixed height", key="fixed_height")
                     if fixed_height:
                         height_cm = st.number_input("Image height (cm)", 0.5, 30.0, 5.0, 0.1, key="img_height_cm")
                     else:
                         height_cm = None
-                show_filename = st.checkbox("Show filename", value=True, key="show_filename")
+                show_filename = st.checkbox("Show filename", value=False, key="show_filename")
 
             if st.button("Preview Image Table", key="preview_img_table"):
                 with st.spinner("Generating preview..."):
