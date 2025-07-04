@@ -72,12 +72,12 @@ def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, 
     img_table = doc.add_table(rows=table_rows, cols=table_cols)
     img_table.autofit = False
     
-    # # Set table width
-    # tbl_pr = img_table._tblPr
-    # tbl_width = OxmlElement('w:tblW')
-    # tbl_width.set(qn('w:w'), str(int(table_width_cm * 360))  # Convert cm to twentieths of a point
-    # tbl_width.set(qn('w:type'), 'dxa')
-    # tbl_pr.append(tbl_width)
+    # Set table width
+    tbl_pr = img_table._tblPr
+    tbl_width = OxmlElement('w:tblW')
+    tbl_width.set(qn('w:w'), str(int(table_width_cm * 360))  # Convert cm to twentieths of a point
+    tbl_width.set(qn('w:type'), 'dxa')
+    tbl_pr.append(tbl_width)
 
     for row in img_table.rows:
         for cell in row.cells:
@@ -275,4 +275,57 @@ def main():
                         height_cm = None
                 show_filename = st.checkbox("Show filename", value=True, key="show_filename")
 
-            if st.button("Preview Image Table", ke
+            if st.button("Preview Image Table", key="preview_img_table"):
+                with st.spinner("Generating preview..."):
+                    try:
+                        st.subheader("Table Preview")
+                        create_image_table_preview(
+                            image_files,
+                            table_rows,
+                            table_cols,
+                            image_width_cm,
+                            height_cm,
+                            show_filename
+                        )
+                        st.info(
+                            "Note: This is an approximation of how the table will look in Word.")
+                    except Exception as e:
+                        st.error(f"Error generating preview: {str(e)}")
+
+            if st.button("Generate Image Table Document", key="generate_img_table"):
+                with st.spinner("Creating document..."):
+                    try:
+                        doc = create_image_table_doc(
+                            image_files,
+                            table_rows,
+                            table_cols,
+                            image_width_cm,
+                            table_width_cm,
+                            height_cm,
+                            show_filename
+                        )
+                        st.success("Image table created successfully!")
+
+                        # Extract the name of the first image file without extension
+                        first_image_name = os.path.splitext(image_files[0].name)[0]
+                        file_name = f"{first_image_name}.docx"
+
+                        # Save the document to a BytesIO buffer
+                        buffer = BytesIO()
+                        doc.save(buffer)
+                        buffer.seek(0)
+
+                        # Provide the document for download
+                        st.download_button(
+                            label="Download Word Document",
+                            data=buffer,
+                            file_name=file_name,
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            key="download_img_table"
+                        )
+                    except Exception as e:
+                        st.error(f"Error creating image table: {str(e)}")
+
+if __name__ == "__main__":
+    st.set_page_config(layout="wide")
+    main()
