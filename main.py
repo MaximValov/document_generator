@@ -61,7 +61,7 @@ def add_image_to_cell(cell, image_path, width_cm, height_cm=None, filename=None,
         run.font.name = 'Times New Roman'
         run.font.size = Pt(10)
 
-def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, table_width_cm, height_cm=None, show_filename=True):
+def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, table_width_percent, height_cm=None, show_filename=True):
     """Create a Word document with an image table"""
     doc = Document()
     style = doc.styles['Normal']
@@ -72,11 +72,11 @@ def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, 
     img_table = doc.add_table(rows=table_rows, cols=table_cols)
     img_table.autofit = False
     
-    # Set table width
+    # Set table width as percentage
     tbl_pr = img_table._tblPr
     tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), str(int(table_width_cm * 360)))  # Convert cm to twentieths of a point
-    tbl_width.set(qn('w:type'), 'dxa')
+    tbl_width.set(qn('w:w'), str(int(table_width_percent * 50)))  # Convert percentage to twentieths of a percent
+    tbl_width.set(qn('w:type'), 'pct')
     tbl_pr.append(tbl_width)
 
     for row in img_table.rows:
@@ -262,7 +262,7 @@ def main():
                 with cols[1]:
                     table_cols = st.number_input("Table columns", 1, 10, min(3, len(image_files)), key="img_cols")
                 with cols[2]:
-                    table_width_cm = st.number_input("Table width (cm)", 1.0, 50.0, 18.5, 0.1, key="table_width_cm")
+    table_width_percent = st.number_input("Table width (%)", 1, 100, 100, 1, key="table_width_percent")
                 
                 cols = st.columns(2)
                 with cols[0]:
@@ -296,14 +296,14 @@ def main():
                 with st.spinner("Creating document..."):
                     try:
                         doc = create_image_table_doc(
-                            image_files,
-                            table_rows,
-                            table_cols,
-                            image_width_cm,
-                            table_width_cm,
-                            height_cm,
-                            show_filename
-                        )
+    image_files,
+    table_rows,
+    table_cols,
+    image_width_cm,
+    table_width_percent,  # Changed from table_width_cm
+    height_cm,
+    show_filename
+)
                         st.success("Image table created successfully!")
 
                         # Extract the name of the first image file without extension
