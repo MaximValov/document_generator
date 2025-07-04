@@ -61,7 +61,7 @@ def add_image_to_cell(cell, image_path, width_cm, height_cm=None, filename=None,
         run.font.name = 'Times New Roman'
         run.font.size = Pt(10)
 
-def create_image_table_doc(image_files, table_rows, table_cols, width_cm, cell_width_cm,height_cm=None, show_filename=True):
+def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height_cm=None, show_filename=True, cell_width_cm=8.75):
     """Create a Word document with an image table"""
     doc = Document()
     style = doc.styles['Normal']
