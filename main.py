@@ -262,7 +262,7 @@ def main():
                 with cols[1]:
                     table_cols = st.number_input("Table columns", 1, 10, min(3, len(image_files)), key="img_cols")
                 with cols[2]:
-    table_width_percent = st.number_input("Table width (%)", 1, 100, 100, 1, key="table_width_percent")
+                    table_width_percent = st.number_input("Table width (%)", 1, 100, 100, 1, key="table_width_percent")
                 
                 cols = st.columns(2)
                 with cols[0]:
