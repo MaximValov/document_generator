@@ -61,7 +61,7 @@ def add_image_to_cell(cell, image_path, width_cm, height_cm=None, filename=None,
         run.font.name = 'Times New Roman'
         run.font.size = Pt(10)
 
-def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height_cm=None, show_filename=True, cell_width_cm=8.75):
+def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height_cm=None, show_filename=True):
     """Create a Word document with an image table"""
     doc = Document()
     style = doc.styles['Normal']
@@ -77,13 +77,16 @@ def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height
         for cell in row.cells:
             tc = cell._tc
             tcPr = tc.get_or_add_tcPr()
-            # Remove the gridSpan element as it's causing cells to merge
-            # Only set the cell width
+            # Set cell width
+            tblGridChange = OxmlElement('w:gridSpan')
+            tblGridChange.set(qn('w:val'), str(table_cols))
+            tcPr.append(tblGridChange)
             tcWidth = OxmlElement('w:tcW')
-            tcWidth.set(qn('w:w'), str(int(cell_width_cm * 360)))
+            tcWidth.set(qn('w:w'), str(int(cell_width_cm * 360)))  # Convert cm to twips (1 cm = 360 twips)
             tcWidth.set(qn('w:type'), 'pct')
             tcPr.append(tcWidth)
 
+            # Configure table borders
             for border_name in ['top', 'left', 'bottom', 'right']:
                 border = OxmlElement(f'w:{border_name}')
                 border.set(qn('w:val'), 'single')
@@ -103,8 +106,7 @@ def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height
                     img = Image.open(image_files[img_count])
                     img.save(tmp.name)
                     tmp_path = tmp.name
-                add_image_to_cell(cell, tmp_path, width_cm, height_cm, filename if show_filename else None,
-                                  show_filename)
+                add_image_to_cell(cell, tmp_path, width_cm, height_cm, filename if show_filename else None)
                 os.unlink(tmp_path)
                 img_count += 1
     return doc
@@ -264,18 +266,18 @@ def main():
                 with cols[1]:
                     table_cols = st.number_input("Table columns", 1, 10, 2, key="img_cols")
                 with cols[2]:
-                    cell_width_cm = st.number_input("Cell width (cm)", 1.0, 20.0, 8.75, 0.1, key="cell_width_cm")
+                    cell_width_cm = st.number_input("Cell width (cm)", 1.0, 20.0, 8.46, 0.1, key="cell_width_cm")
 
                 cols = st.columns(2)
                 with cols[0]:
-                    width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 8.46, 0.1, key="img_width_cm")
+                    width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm")
                 with cols[1]:
                     fixed_height = st.checkbox("Fixed height", key="fixed_height")
                     if fixed_height:
                         height_cm = st.number_input("Image height (cm)", 0.5, 30.0, 5.0, 0.1, key="img_height_cm")
                     else:
                         height_cm = None
-                show_filename = st.checkbox("Show filename", value=False, key="show_filename")
+                show_filename = st.checkbox("Show filename", value=True, key="show_filename")
 
             if st.button("Preview Image Table", key="preview_img_table"):
                 with st.spinner("Generating preview..."):
