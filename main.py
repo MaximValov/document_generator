@@ -75,7 +75,7 @@ def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, 
     # Set table width
     tbl_pr = img_table._tblPr
     tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), str(int(table_width_cm * 360))  # Convert cm to twentieths of a point
+    tbl_width.set(qn('w:w'), str(int(table_width_cm * 360)))  # Convert cm to twentieths of a point
     tbl_width.set(qn('w:type'), 'dxa')
     tbl_pr.append(tbl_width)
 
