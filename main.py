@@ -243,7 +243,7 @@ def main():
     with tab2:
         st.header("Image Table Generator")
         image_files = st.file_uploader("Upload images for the table",
-                                       type=["png", "jpg", "jpeg"],
+                                       type=["png", "jpg", "jpeg","bmp"],
                                        accept_multiple_files=True,
                                        key="image_uploader")
 
@@ -314,7 +314,7 @@ def main():
                         )
                     except Exception as e:
                         st.error(f"Error creating image table: {str(e)}")
-                        
+
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
     main()
