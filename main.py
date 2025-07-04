@@ -61,7 +61,7 @@ def add_image_to_cell(cell, image_path, width_cm, height_cm=None, filename=None,
         run.font.name = 'Times New Roman'
         run.font.size = Pt(10)
 
-def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height_cm=None, show_filename=True, cell_width_cm=8.75):
+def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height_cm=None, show_filename=True):
     """Create a Word document with an image table"""
     doc = Document()
     style = doc.styles['Normal']
@@ -72,21 +72,10 @@ def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height
     img_table = doc.add_table(rows=table_rows, cols=table_cols)
     img_table.autofit = False
 
-    # Set cell width
     for row in img_table.rows:
         for cell in row.cells:
             tc = cell._tc
             tcPr = tc.get_or_add_tcPr()
-            # Set cell width
-            tblGridChange = OxmlElement('w:gridSpan')
-            tblGridChange.set(qn('w:val'), str(table_cols))
-            tcPr.append(tblGridChange)
-            tcWidth = OxmlElement('w:tcW')
-            tcWidth.set(qn('w:w'), str(int(cell_width_cm * 360)))  # Convert cm to twips (1 cm = 360 twips)
-            tcWidth.set(qn('w:type'), 'pct')
-            tcPr.append(tcWidth)
-
-            # Configure table borders
             for border_name in ['top', 'left', 'bottom', 'right']:
                 border = OxmlElement(f'w:{border_name}')
                 border.set(qn('w:val'), 'single')
@@ -106,7 +95,7 @@ def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height
                     img = Image.open(image_files[img_count])
                     img.save(tmp.name)
                     tmp_path = tmp.name
-                add_image_to_cell(cell, tmp_path, width_cm, height_cm, filename if show_filename else None)
+                add_image_to_cell(cell, tmp_path, width_cm, height_cm, filename, show_filename)
                 os.unlink(tmp_path)
                 img_count += 1
     return doc
@@ -254,7 +243,7 @@ def main():
     with tab2:
         st.header("Image Table Generator")
         image_files = st.file_uploader("Upload images for the table",
-                                       type=["png", "jpg", "jpeg", "bmp"],
+                                       type=["png", "jpg", "jpeg","bmp"],
                                        accept_multiple_files=True,
                                        key="image_uploader")
 
@@ -264,10 +253,7 @@ def main():
                 with cols[0]:
                     table_rows = st.number_input("Table rows", 1, 20, 1, key="img_rows")
                 with cols[1]:
-                    table_cols = st.number_input("Table columns", 1, 10, 2, key="img_cols")
-                with cols[2]:
-                    cell_width_cm = st.number_input("Cell width (cm)", 1.0, 20.0, 8.46, 0.1, key="cell_width_cm")
-
+                    table_cols = st.number_input("Table columns", 1, 10, min(3, len(image_files)), key="img_cols")
                 cols = st.columns(2)
                 with cols[0]:
                     width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm")
@@ -305,18 +291,20 @@ def main():
                             table_cols,
                             width_cm,
                             height_cm,
-                            show_filename,
-                            cell_width_cm
+                            show_filename
                         )
                         st.success("Image table created successfully!")
 
+                        # Extract the name of the first image file without extension
                         first_image_name = os.path.splitext(image_files[0].name)[0]
                         file_name = f"{first_image_name}.docx"
 
+                        # Save the document to a BytesIO buffer
                         buffer = BytesIO()
                         doc.save(buffer)
                         buffer.seek(0)
 
+                        # Provide the document for download
                         st.download_button(
                             label="Download Word Document",
                             data=buffer,
