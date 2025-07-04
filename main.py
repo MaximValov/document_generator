@@ -77,16 +77,14 @@ def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height
         for cell in row.cells:
             tc = cell._tc
             tcPr = tc.get_or_add_tcPr()
-            # Set cell width
             tblGridChange = OxmlElement('w:gridSpan')
             tblGridChange.set(qn('w:val'), str(table_cols))
             tcPr.append(tblGridChange)
             tcWidth = OxmlElement('w:tcW')
-            tcWidth.set(qn('w:w'), str(int(cell_width_cm * 360)))  # Convert cm to twips (1 cm = 360 twips)
+            tcWidth.set(qn('w:w'), str(int(cell_width_cm * 360)))
             tcWidth.set(qn('w:type'), 'pct')
             tcPr.append(tcWidth)
 
-            # Configure table borders
             for border_name in ['top', 'left', 'bottom', 'right']:
                 border = OxmlElement(f'w:{border_name}')
                 border.set(qn('w:val'), 'single')
@@ -106,9 +104,10 @@ def create_image_table_doc(image_files, table_rows, table_cols, width_cm, height
                     img = Image.open(image_files[img_count])
                     img.save(tmp.name)
                     tmp_path = tmp.name
-                add_image_to_cell(cell, tmp_path, width_cm, height_cm, filename if show_filename else None)
+                add_image_to_cell(cell, tmp_path, width_cm, height_cm, filename if show_filename else None,
+                                  show_filename)
                 os.unlink(tmp_path)
-                img_count += 1
+                img_count += 1  # Increment the image count after placing an image in a cell
     return doc
 
 def create_image_table_preview(image_files, table_rows, table_cols, width_cm, height_cm=None, show_filename=True):
