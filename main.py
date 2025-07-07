@@ -283,7 +283,7 @@ def main():
 
                 cols = st.columns(2)
                 with cols[0]:
-                    image_width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm")
+                    image_width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 8.46, 0.1, key="img_width_cm")
                 with cols[1]:
                     fixed_height = st.checkbox("Fixed height", key="fixed_height")
                     if fixed_height:
@@ -309,113 +309,8 @@ def main():
                     except Exception as e:
                         st.error(f"Error generating preview: {str(e)}")
 
-            if st.button("Generate Image + Table Document", key="generate_img_table_tab3"):
-                with st.spinner("Creating document..."):
-                    try:
-                        doc = Document()
-                        style = doc.styles['Normal']
-                        font = style.font
-                        font.name = 'Times New Roman'
-                        font.size = Pt(12)
-        
-                        # Create one continuous table with 2 columns
-                        table = doc.add_table(rows=len(image_files), cols=2)
-                        table.autofit = False
-        
-                        # Set table width to 100% of page
-                        tbl_pr = table._tblPr
-                        tbl_width = OxmlElement('w:tblW')
-                        tbl_width.set(qn('w:w'), "5000")  # 5000 = 100% width
-                        tbl_width.set(qn('w:type'), 'pct')
-                        tbl_pr.append(tbl_width)
-        
-                        # Set table borders to 0.5pt
-                        tbl_borders = OxmlElement('w:tblBorders')
-                        for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-                            border = OxmlElement(f'w:{border_name}')
-                            border.set(qn('w:val'), 'single')
-                            border.set(qn('w:sz'), '4')  # 4 = 0.5pt
-                            border.set(qn('w:space'), '0')
-                            border.set(qn('w:color'), '000000')
-                            tbl_borders.append(border)
-                        tbl_pr.append(tbl_borders)
-        
-                        for idx, img_file in enumerate(image_files):
-                            img_name = os.path.splitext(img_file.name)[0]
-                            row = table.rows[idx]
-        
-                            # Set row height to 0.6cm
-                            tr_pr = row._tr.get_or_add_trPr()
-                            tr_height = OxmlElement('w:trHeight')
-                            tr_height.set(qn('w:val'), str(int(0.6 * 567)))  # 0.6cm in twentieths of a point
-                            tr_height.set(qn('w:hRule'), 'exact')
-                            tr_pr.append(tr_height)
-        
-                            # Left cell (image)
-                            left_cell = row.cells[0]
-                            left_cell.width = Cm(image_width_cm)
-                            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
-                                img = Image.open(img_file)
-                                img.save(tmp.name)
-                                add_image_to_cell(left_cell, tmp.name, image_width_cm,
-                                                  show_filename=show_filename, filename=img_name)
-                                os.unlink(tmp.name)
-        
-                            # Right cell (table)
-                            right_cell = row.cells[1]
-                            right_cell.width = Cm(table_width_cm)
-        
-                            if img_name in table_mapping:
-                                try:
-                                    src_doc = Document(table_mapping[img_name])
-                                    if src_doc.tables:
-                                        src_table = src_doc.tables[0]
-        
-                                        # Create nested table in right cell
-                                        nested_table = right_cell.add_table(
-                                            rows=len(src_table.rows),
-                                            cols=len(src_table.columns))
-        
-                                        # Copy content and formatting
-                                        for i, src_row in enumerate(src_table.rows):
-                                            for j, src_cell in enumerate(src_row.cells):
-                                                new_cell = nested_table.cell(i, j)
-                                                # Clear existing paragraphs
-                                                for para in new_cell.paragraphs:
-                                                    p = para._element
-                                                    p.getparent().remove(p)
-                                                # Copy content
-                                                for para in src_cell.paragraphs:
-                                                    new_para = new_cell.add_paragraph()
-                                                    for run in para.runs:
-                                                        new_run = new_para.add_run(run.text)
-                                                        new_run.bold = run.bold
-                                                        new_run.italic = run.italic
-                                                        new_run.underline = run.underline
-                                                        new_run.font.name = run.font.name or 'Times New Roman'
-                                                        new_run.font.size = run.font.size or Pt(12)
-                                                # Set cell borders
-                                                set_cell_borders(new_cell)
-                                except Exception as e:
-                                    right_cell.text = f"Error loading table: {str(e)}"
-        
-                        # Save the document
-                        buffer = BytesIO()
-                        doc.save(buffer)
-                        buffer.seek(0)
-        
-                        st.success("Document created successfully!")
-                        st.download_button(
-                            label="Download Word Document",
-                            data=buffer,
-                            file_name="images_and_tables.docx",
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key="download_img_table_tab3"
-                        )
-        
-                    except Exception as e:
-                        st.error(f"Error creating document: {str(e)}")
-                
+
+
     with tab3:
         st.header("Image + Word Table Generator")
         image_files = st.file_uploader("Upload images for the left column",
@@ -471,7 +366,6 @@ def main():
                     else:
                         st.warning(f"No matching table found for image: {img_name}")
 
-
             if st.button("Generate Image + Table Document", key="generate_img_table_tab3"):
                 with st.spinner("Creating document..."):
                     try:
@@ -481,108 +375,120 @@ def main():
                         font.name = 'Times New Roman'
                         font.size = Pt(12)
 
-                        for img_file in image_files:
+                        # Create one continuous table with 2 columns
+                        table = doc.add_table(rows=len(image_files), cols=2)
+                        table.autofit = False
+
+                        # Set table width to 100% of page and remove spacing
+                        tbl_pr = table._tblPr
+                        tbl_width = OxmlElement('w:tblW')
+                        tbl_width.set(qn('w:w'), "5000")  # 100% width
+                        tbl_width.set(qn('w:type'), 'pct')
+                        tbl_pr.append(tbl_width)
+
+                        # Remove all spacing between cells
+                        tbl_layout = OxmlElement('w:tblLayout')
+                        tbl_layout.set(qn('w:type'), 'fixed')
+                        tbl_pr.append(tbl_layout)
+
+                        tbl_cellmar = OxmlElement('w:tblCellMar')
+                        for margin in ['top', 'left', 'bottom', 'right']:
+                            cell_margin = OxmlElement(f'w:{margin}')
+                            cell_margin.set(qn('w:w'), '0')
+                            cell_margin.set(qn('w:type'), 'dxa')
+                            tbl_cellmar.append(cell_margin)
+                        tbl_pr.append(tbl_cellmar)
+
+                        # Set table borders
+                        tbl_borders = OxmlElement('w:tblBorders')
+                        for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+                            border = OxmlElement(f'w:{border_name}')
+                            border.set(qn('w:val'), 'single')
+                            border.set(qn('w:sz'), '4')  # 0.5pt
+                            border.set(qn('w:space'), '0')
+                            border.set(qn('w:color'), '000000')
+                            tbl_borders.append(border)
+                        tbl_pr.append(tbl_borders)
+
+                        for idx, img_file in enumerate(image_files):
                             img_name = os.path.splitext(img_file.name)[0]
+                            row = table.rows[idx]
+
+                            # Set exact row height (0.6cm) and remove spacing
+                            tr_pr = row._tr.get_or_add_trPr()
+                            tr_height = OxmlElement('w:trHeight')
+                            tr_height.set(qn('w:val'), str(int(0.6 * 567)))  # 0.6cm
+                            tr_height.set(qn('w:hRule'), 'exact')
+                            tr_pr.append(tr_height)
+
+                            # Remove after/before paragraph spacing for all cells
+                            for cell in row.cells:
+                                for para in cell.paragraphs:
+                                    p_pr = para._element.get_or_add_pPr()
+                                    spacing = OxmlElement('w:spacing')
+                                    spacing.set(qn('w:after'), '0')
+                                    spacing.set(qn('w:before'), '0')
+                                    spacing.set(qn('w:line'), '240')  # Single line spacing
+                                    spacing.set(qn('w:lineRule'), 'exact')
+                                    p_pr.append(spacing)
+
+                            # Left cell (image)
+                            left_cell = row.cells[0]
+                            left_cell.width = Cm(image_width_cm)
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
+                                img = Image.open(img_file)
+                                img.save(tmp.name)
+                                add_image_to_cell(left_cell, tmp.name, image_width_cm,
+                                                  show_filename=show_filename, filename=img_name)
+                                os.unlink(tmp.name)
+
+                            # Right cell (table)
+                            right_cell = row.cells[1]
+                            right_cell.width = Cm(table_width_cm)
+
                             if img_name in table_mapping:
-                                # Add a new table with 2 columns
-                                table = doc.add_table(rows=1, cols=2)
-                                table.autofit = False
-
-                                # Set table width to 100% of page (fixed)
-                                tbl_pr = table._tblPr
-                                tbl_width = OxmlElement('w:tblW')
-                                tbl_width.set(qn('w:w'), "5000")  # 5000 = 100% width in twentieths of a percent
-                                tbl_width.set(qn('w:type'), 'pct')
-                                tbl_pr.append(tbl_width)
-
-                                # Set column widths
-                                cols = table.columns
-                                cols[0].width = Cm(image_width_cm)
-                                cols[1].width = Cm(table_width_cm)
-
-                                # Set table borders to 0.5pt
-                                tbl_borders = OxmlElement('w:tblBorders')
-                                for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-                                    border = OxmlElement(f'w:{border_name}')
-                                    border.set(qn('w:val'), 'single')
-                                    border.set(qn('w:sz'), '4')  # 4 = 0.5pt
-                                    border.set(qn('w:space'), '0')
-                                    border.set(qn('w:color'), '000000')
-                                    tbl_borders.append(border)
-                                tbl_pr.append(tbl_borders)
-
-                                # Add image to left cell
-                                left_cell = table.cell(0, 0)
-                                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
-                                    img = Image.open(img_file)
-                                    img.save(tmp.name)
-                                    add_image_to_cell(left_cell, tmp.name, image_width_cm,
-                                                      show_filename=show_filename, filename=img_name)
-                                    os.unlink(tmp.name)
-
-                                # Add Word table to right cell
-                                right_cell = table.cell(0, 1)
                                 try:
-                                    # Open the source Word document
                                     src_doc = Document(table_mapping[img_name])
-
-                                    # Get the first table from source document
                                     if src_doc.tables:
                                         src_table = src_doc.tables[0]
 
-                                        # Create new table in right cell
-                                        new_table = right_cell.add_table(
+                                        # Create nested table that fills the entire cell
+                                        nested_table = right_cell.add_table(
                                             rows=len(src_table.rows),
-                                            cols=len(src_table.columns)
-                                        )
+                                            cols=len(src_table.columns))
+                                        nested_table.autofit = False
 
-                                        # Set table borders to 0.5pt
-                                        new_tbl_pr = new_table._tblPr
-                                        new_tbl_borders = OxmlElement('w:tblBorders')
-                                        for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-                                            border = OxmlElement(f'w:{border_name}')
-                                            border.set(qn('w:val'), 'single')
-                                            border.set(qn('w:sz'), '4')  # 4 = 0.5pt
-                                            border.set(qn('w:space'), '0')
-                                            border.set(qn('w:color'), '000000')
-                                            new_tbl_borders.append(border)
-                                        new_tbl_pr.append(new_tbl_borders)
+                                        # Make nested table fill parent cell completely
+                                        nested_tbl_pr = nested_table._tblPr
+                                        nested_width = OxmlElement('w:tblW')
+                                        nested_width.set(qn('w:w'), "10000")  # 100% of cell
+                                        nested_width.set(qn('w:type'), 'pct')
+                                        nested_tbl_pr.append(nested_width)
 
-                                        # Copy content and formatting
-                                        for i, row in enumerate(src_table.rows):
-                                            for j, cell in enumerate(row.cells):
-                                                new_cell = new_table.cell(i, j)
-                                                # Clear existing paragraphs to avoid duplication
-                                                for para in new_cell.paragraphs:
-                                                    p = para._element
-                                                    p.getparent().remove(p)
-
-                                                # Copy text and formatting
-                                                for para in cell.paragraphs:
-                                                    new_para = new_cell.add_paragraph()
-                                                    for run in para.runs:
-                                                        new_run = new_para.add_run(run.text)
-                                                        new_run.bold = run.bold
-                                                        new_run.italic = run.italic
-                                                        new_run.underline = run.underline
-                                                        new_run.font.name = run.font.name or 'Times New Roman'
-                                                        new_run.font.size = run.font.size or Pt(12)
-
-                                                # Set cell borders to 0.5pt
+                                        # Copy content without adding extra paragraphs
+                                        for i, src_row in enumerate(src_table.rows):
+                                            for j, src_cell in enumerate(src_row.cells):
+                                                new_cell = nested_table.cell(i, j)
+                                                # Clear existing content
+                                                new_cell.text = ''
+                                                # Copy text directly without extra paragraphs
+                                                if src_cell.text.strip():
+                                                    para = new_cell.paragraphs[0]
+                                                    run = para.add_run(src_cell.text)
+                                                    # Copy basic formatting
+                                                    run.font.name = 'Times New Roman'
+                                                    run.font.size = Pt(10)  # Slightly smaller font
                                                 set_cell_borders(new_cell)
-
                                 except Exception as e:
-                                    right_cell.text = f"Error loading table: {str(e)}"
-
-                                # Add space between items
-                                doc.add_paragraph()
+                                    right_cell.text = f"Error: {str(e)}"
+                                    right_cell.paragraphs[0].runs[0].font.size = Pt(10)
 
                         # Save the document
                         buffer = BytesIO()
                         doc.save(buffer)
                         buffer.seek(0)
 
-                        st.success("Document created successfully!")
+                        st.success("Document created successfully with no spacing between rows!")
                         st.download_button(
                             label="Download Word Document",
                             data=buffer,
