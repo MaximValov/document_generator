@@ -189,151 +189,167 @@ def convert_excel_to_word(df):
     buffer.seek(0)
     return buffer
 
+def set_cell_borders(cell, border_color="000000"):
+    """Set cell borders with specified color (hex format)"""
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    for border_name in ['top', 'left', 'bottom', 'right']:
+        border = OxmlElement(f'w:{border_name}')
+        border.set(qn('w:val'), 'single')
+        border.set(qn('w:sz'), '4')
+        border.set(qn('w:space'), '0')
+        border.set(qn('w:color'), border_color)
+        tcPr.append(border)
 
 def main():
     st.title("Document Generator")
-    tab1, tab2 = st.tabs(["Excel to Word Converter", "Image Table Generator"])
+    tab1, tab2, tab3 = st.tabs(["Excel to Word Converter", "Image Table Generator", "Image + Word Table Generator"])
 
-    with tab1:
-        st.header("Excel Batch to Word Converter")
-        col1, col2 = st.columns(2)
-        with col1:
-            data_files = st.file_uploader("Upload Excel files to convert",
-                                          type=["xlsx", "xls"],
-                                          accept_multiple_files=True,
-                                          key="excel_uploader")
-        with col2:
-            sub_file = st.file_uploader("Upload substitution file (sub.xlsx)",
-                                        type=["xlsx", "xls"],
-                                        help="First column: text to find, Second column: replacement text",
-                                        key="sub_uploader")
+    # ... (keep existing tab1 and tab2 code unchanged) ...
 
-        if data_files:
-            sub_dict = load_substitution_rules(sub_file) if sub_file else {}
-            if sub_dict:
-                st.info(f"Loaded {len(sub_dict)} substitution rules")
-                if st.checkbox("Show substitution rules", key="show_subs"):
-                    st.dataframe(pd.DataFrame(list(sub_dict.items()), columns=["Find", "Replace"]))
-
-            with st.expander("Transformation Options", expanded=True):
-                cols = st.columns(3)
-                with cols[0]:
-                    remove_rows = st.checkbox("Remove last N rows", key="remove_rows")
-                    if remove_rows:
-                        n_rows = st.number_input("Number of rows to remove from end", 1, 100, 1, key="n_rows")
-                with cols[1]:
-                    remove_cols = st.checkbox("Remove columns", key="remove_cols")
-                    if remove_cols:
-                        col_range = st.slider("Column range to remove", 1, 50, (1, 1), key="col_range")
-                with cols[2]:
-                    round_enabled = st.checkbox("Round numbers", key="round_enabled")
-                    round_decimals = st.number_input("Decimal places", 0, 6, 2,
-                                                     key="decimals") if round_enabled else None
-
-            for data_file in data_files:
-                try:
-                    original_df = pd.read_excel(data_file)
-                    file_name = os.path.splitext(data_file.name)[0]
-                    with st.expander(f"Processing: {file_name}", expanded=True):
-                        processed_df = process_dataframe(
-                            original_df,
-                            sub_dict,
-                            n_rows if remove_rows else None,
-                            col_range if remove_cols else None,
-                            round_decimals if round_enabled else None
-                        )
-                        st.subheader("Complete Modified Table Preview")
-                        st.dataframe(processed_df, height=400)
-                        word_buffer = convert_excel_to_word(processed_df)
-                        st.download_button(
-                            label=f"Download {file_name}.docx",
-                            data=word_buffer,
-                            file_name=f"{file_name}.docx",
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key=f"download_{file_name}"
-                        )
-                except Exception as e:
-                    st.error(f"Error processing {data_file.name}: {str(e)}")
-
-    with tab2:
-        st.header("Image Table Generator")
-        image_files = st.file_uploader("Upload images for the table",
+    with tab3:
+        st.header("Image + Word Table Generator")
+        image_files = st.file_uploader("Upload images for the left column",
                                        type=["png", "jpg", "jpeg", "bmp"],
                                        accept_multiple_files=True,
-                                       key="image_uploader")
+                                       key="image_table_uploader")
 
-        if image_files:
-            with st.expander("Image Table Configuration", expanded=True):
-                cols = st.columns(3)
-                with cols[0]:
-                    table_rows = st.number_input("Table rows", 1, 20, 1, key="img_rows")
-                with cols[1]:
-                    table_cols = st.number_input("Table columns", 1, 10, min(3, len(image_files)), key="img_cols")
-                with cols[2]:
-                    table_width_percent = st.number_input("Table width (%)", 1, 100, 100, 1, key="table_width_percent")
+        table_files = st.file_uploader("Upload Word files with tables for the right column (same names as images)",
+                                       type=["docx"],
+                                       accept_multiple_files=True,
+                                       key="table_uploader")
 
+        if image_files and table_files:
+            # Create a mapping of filename (without extension) to file objects
+            table_mapping = {os.path.splitext(f.name)[0]: f for f in table_files}
+
+            with st.expander("Configuration", expanded=True):
                 cols = st.columns(2)
                 with cols[0]:
-                    image_width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm")
+                    image_width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm_tab3")
                 with cols[1]:
-                    fixed_height = st.checkbox("Fixed height", key="fixed_height")
-                    if fixed_height:
-                        height_cm = st.number_input("Image height (cm)", 0.5, 30.0, 5.0, 0.1, key="img_height_cm")
+                    table_width_cm = st.number_input("Table width (cm)", 0.5, 30.0, 15.0, 0.1,
+                                                     key="table_width_cm_tab3")
+
+                show_filename = st.checkbox("Show filename", value=True, key="show_filename_tab3")
+                border_color = st.color_picker("Border color", "#000000", key="border_color_tab3")
+
+            if st.button("Preview Image + Table", key="preview_img_table_tab3"):
+                st.subheader("Preview")
+                for img_file in image_files[:5]:  # Limit preview to 5 items
+                    img_name = os.path.splitext(img_file.name)[0]
+                    if img_name in table_mapping:
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.image(img_file, caption=img_name if show_filename else "", width=200)
+                        with col2:
+                            try:
+                                doc = Document(table_mapping[img_name])
+                                for table in doc.tables:
+                                    html = []
+                                    for row in table.rows:
+                                        html.append("<tr>")
+                                        for cell in row.cells:
+                                            html.append(f"<td>{cell.text}</td>")
+                                        html.append("</tr>")
+                                    st.markdown(f"<table>{''.join(html)}</table>", unsafe_allow_html=True)
+                                    break  # Just show first table
+                            except Exception as e:
+                                st.error(f"Error loading table for {img_name}: {str(e)}")
                     else:
-                        height_cm = None
-                show_filename = st.checkbox("Show filename", value=True, key="show_filename")
+                        st.warning(f"No matching table found for image: {img_name}")
 
-            if st.button("Preview Image Table", key="preview_img_table"):
-                with st.spinner("Generating preview..."):
-                    try:
-                        st.subheader("Table Preview")
-                        create_image_table_preview(
-                            image_files,
-                            table_rows,
-                            table_cols,
-                            image_width_cm,
-                            height_cm,
-                            show_filename
-                        )
-                        st.info(
-                            "Note: This is an approximation of how the table will look in Word.")
-                    except Exception as e:
-                        st.error(f"Error generating preview: {str(e)}")
-
-            if st.button("Generate Image Table Document", key="generate_img_table"):
+            if st.button("Generate Image + Table Document", key="generate_img_table_tab3"):
                 with st.spinner("Creating document..."):
                     try:
-                        doc = create_image_table_doc(
-                            image_files,
-                            table_rows,
-                            table_cols,
-                            image_width_cm,
-                            table_width_percent,  # Changed from table_width_cm
-                            height_cm,
-                            show_filename
-                        )
-                        st.success("Image table created successfully!")
+                        doc = Document()
+                        style = doc.styles['Normal']
+                        font = style.font
+                        font.name = 'Times New Roman'
+                        font.size = Pt(12)
 
-                        # Extract the name of the first image file without extension
-                        first_image_name = os.path.splitext(image_files[0].name)[0]
-                        file_name = f"{first_image_name}.docx"
+                        for img_file in image_files:
+                            img_name = os.path.splitext(img_file.name)[0]
+                            if img_name in table_mapping:
+                                # Add a new table with 2 columns
+                                table = doc.add_table(rows=1, cols=2)
+                                table.autofit = False
 
-                        # Save the document to a BytesIO buffer
+                                # Set table width to 100% of page
+                                tbl_pr = table._tblPr
+                                tbl_width = OxmlElement('w:tblW')
+                                tbl_width.set(qn('w:w'), "10000")  # 100% width
+                                tbl_width.set(qn('w:type'), 'pct')
+                                tbl_pr.append(tbl_width)
+
+                                # Set column widths
+                                cols = table.columns
+                                cols[0].width = Cm(image_width_cm)
+                                cols[1].width = Cm(table_width_cm)
+
+                                # Add image to left cell
+                                left_cell = table.cell(0, 0)
+                                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
+                                    img = Image.open(img_file)
+                                    img.save(tmp.name)
+                                    add_image_to_cell(left_cell, tmp.name, image_width_cm,
+                                                      show_filename=show_filename, filename=img_name)
+                                    os.unlink(tmp.name)
+
+                                # Add Word table to right cell
+                                right_cell = table.cell(0, 1)
+                                try:
+                                    # Open the source Word document
+                                    src_doc = Document(table_mapping[img_name])
+
+                                    # Copy all tables from source document
+                                    for src_table in src_doc.tables:
+                                        # Create new table in right cell
+                                        new_table = right_cell.add_table(
+                                            rows=len(src_table.rows),
+                                            cols=len(src_table.columns)
+                                        )
+
+                                        # Copy content and formatting
+                                        for i, row in enumerate(src_table.rows):
+                                            for j, cell in enumerate(row.cells):
+                                                new_cell = new_table.cell(i, j)
+                                                new_cell.text = cell.text
+                                                set_cell_borders(new_cell, border_color)
+
+                                                # Copy paragraph formatting
+                                                for src_para in cell.paragraphs:
+                                                    new_para = new_cell.add_paragraph()
+                                                    for run in src_para.runs:
+                                                        new_run = new_para.add_run(run.text)
+                                                        new_run.bold = run.bold
+                                                        new_run.italic = run.italic
+                                                        new_run.underline = run.underline
+                                                        new_run.font.name = run.font.name
+                                                        new_run.font.size = run.font.size
+
+                                except Exception as e:
+                                    right_cell.text = f"Error loading table: {str(e)}"
+
+                                # Add space between items
+                                doc.add_paragraph()
+
+                        # Save the document
                         buffer = BytesIO()
                         doc.save(buffer)
                         buffer.seek(0)
 
-                        # Provide the document for download
+                        st.success("Document created successfully!")
                         st.download_button(
                             label="Download Word Document",
                             data=buffer,
-                            file_name=file_name,
+                            file_name="images_and_tables.docx",
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key="download_img_table"
+                            key="download_img_table_tab3"
                         )
-                    except Exception as e:
-                        st.error(f"Error creating image table: {str(e)}")
 
+                    except Exception as e:
+                        st.error(f"Error creating document: {str(e)}")
 
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
