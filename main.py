@@ -264,6 +264,7 @@ def main():
                         )
                 except Exception as e:
                     st.error(f"Error processing {data_file.name}: {str(e)}")
+
     with tab2:
         st.header("Image Table Generator")
         image_files = st.file_uploader("Upload images for the table",
@@ -309,112 +310,39 @@ def main():
                     except Exception as e:
                         st.error(f"Error generating preview: {str(e)}")
 
-            if st.button("Generate Image + Table Document", key="generate_img_table_tab3"):
+            if st.button("Generate Image Table Document", key="generate_img_table"):
                 with st.spinner("Creating document..."):
                     try:
-                        doc = Document()
-                        style = doc.styles['Normal']
-                        font = style.font
-                        font.name = 'Times New Roman'
-                        font.size = Pt(12)
+                        doc = create_image_table_doc(
+                            image_files,
+                            table_rows,
+                            table_cols,
+                            image_width_cm,
+                            table_width_percent,  # Changed from table_width_cm
+                            height_cm,
+                            show_filename
+                        )
+                        st.success("Image table created successfully!")
 
-                        # Create one continuous table with 2 columns
-                        table = doc.add_table(rows=len(image_files), cols=2)
-                        table.autofit = False
+                        # Extract the name of the first image file without extension
+                        first_image_name = os.path.splitext(image_files[0].name)[0]
+                        file_name = f"{first_image_name}.docx"
 
-                        # Set table width to 100% of page
-                        tbl_pr = table._tblPr
-                        tbl_width = OxmlElement('w:tblW')
-                        tbl_width.set(qn('w:w'), "5000")  # 5000 = 100% width
-                        tbl_width.set(qn('w:type'), 'pct')
-                        tbl_pr.append(tbl_width)
-
-                        # Set table borders to 0.5pt
-                        tbl_borders = OxmlElement('w:tblBorders')
-                        for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-                            border = OxmlElement(f'w:{border_name}')
-                            border.set(qn('w:val'), 'single')
-                            border.set(qn('w:sz'), '4')  # 4 = 0.5pt
-                            border.set(qn('w:space'), '0')
-                            border.set(qn('w:color'), '000000')
-                            tbl_borders.append(border)
-                        tbl_pr.append(tbl_borders)
-
-                        for idx, img_file in enumerate(image_files):
-                            img_name = os.path.splitext(img_file.name)[0]
-                            row = table.rows[idx]
-
-                            # Set row height to 0.6cm
-                            tr_pr = row._tr.get_or_add_trPr()
-                            tr_height = OxmlElement('w:trHeight')
-                            tr_height.set(qn('w:val'), str(int(0.6 * 567)))  # 0.6cm in twentieths of a point
-                            tr_height.set(qn('w:hRule'), 'exact')
-                            tr_pr.append(tr_height)
-
-                            # Left cell (image)
-                            left_cell = row.cells[0]
-                            left_cell.width = Cm(image_width_cm)
-                            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
-                                img = Image.open(img_file)
-                                img.save(tmp.name)
-                                add_image_to_cell(left_cell, tmp.name, image_width_cm,
-                                                  show_filename=show_filename, filename=img_name)
-                                os.unlink(tmp.name)
-
-                            # Right cell (table)
-                            right_cell = row.cells[1]
-                            right_cell.width = Cm(table_width_cm)
-
-                            if img_name in table_mapping:
-                                try:
-                                    src_doc = Document(table_mapping[img_name])
-                                    if src_doc.tables:
-                                        src_table = src_doc.tables[0]
-
-                                        # Create nested table in right cell
-                                        nested_table = right_cell.add_table(
-                                            rows=len(src_table.rows),
-                                            cols=len(src_table.columns))
-
-                                        # Copy content and formatting
-                                        for i, src_row in enumerate(src_table.rows):
-                                            for j, src_cell in enumerate(src_row.cells):
-                                                new_cell = nested_table.cell(i, j)
-                                                # Clear existing paragraphs
-                                                for para in new_cell.paragraphs:
-                                                    p = para._element
-                                                    p.getparent().remove(p)
-                                                # Copy content
-                                                for para in src_cell.paragraphs:
-                                                    new_para = new_cell.add_paragraph()
-                                                    for run in para.runs:
-                                                        new_run = new_para.add_run(run.text)
-                                                        new_run.bold = run.bold
-                                                        new_run.italic = run.italic
-                                                        new_run.underline = run.underline
-                                                        new_run.font.name = run.font.name or 'Times New Roman'
-                                                        new_run.font.size = run.font.size or Pt(12)
-                                                # Set cell borders
-                                                set_cell_borders(new_cell)
-                                except Exception as e:
-                                    right_cell.text = f"Error loading table: {str(e)}"
-
-                        # Save the document
+                        # Save the document to a BytesIO buffer
                         buffer = BytesIO()
                         doc.save(buffer)
                         buffer.seek(0)
 
-                        st.success("Document created successfully!")
+                        # Provide the document for download
                         st.download_button(
                             label="Download Word Document",
                             data=buffer,
-                            file_name="images_and_tables.docx",
+                            file_name=file_name,
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key="download_img_table_tab3"
+                            key="download_img_table"
                         )
-
                     except Exception as e:
-                        st.error(f"Error creating document: {str(e)}")
+                        st.error(f"Error creating image table: {str(e)}")
 
     with tab3:
         st.header("Image + Word Table Generator")
@@ -547,6 +475,15 @@ def main():
                                             border.set(qn('w:color'), '000000')
                                             new_tbl_borders.append(border)
                                         new_tbl_pr.append(new_tbl_borders)
+
+                                        # Set fixed row height of 0.6cm for all rows
+                                        for row in new_table.rows:
+                                            tr_pr = row._tr.get_or_add_trPr()
+                                            tr_height = OxmlElement('w:trHeight')
+                                            tr_height.set(qn('w:val'),
+                                                          str(int(0.6 * 567)))  # Convert cm to twentieths of a point
+                                            tr_height.set(qn('w:hRule'), 'exact')  # Fixed height
+                                            tr_pr.append(tr_height)
 
                                         # Copy content and formatting
                                         for i, row in enumerate(src_table.rows):
