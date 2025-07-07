@@ -189,8 +189,8 @@ def convert_excel_to_word(df):
     buffer.seek(0)
     return buffer
 
-def set_cell_borders(cell, border_color="000000"):
-    """Set cell borders with specified color (hex format)"""
+def set_cell_borders(cell):
+    """Set cell borders with black color"""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     for border_name in ['top', 'left', 'bottom', 'right']:
@@ -198,8 +198,9 @@ def set_cell_borders(cell, border_color="000000"):
         border.set(qn('w:val'), 'single')
         border.set(qn('w:sz'), '4')
         border.set(qn('w:space'), '0')
-        border.set(qn('w:color'), border_color)
+        border.set(qn('w:color'), '000000')  # Black color
         tcPr.append(border)
+
 
 def main():
     st.title("Document Generator")
@@ -232,7 +233,6 @@ def main():
                                                      key="table_width_cm_tab3")
 
                 show_filename = st.checkbox("Show filename", value=True, key="show_filename_tab3")
-                border_color = st.color_picker("Border color", "#000000", key="border_color_tab3")
 
             if st.button("Preview Image + Table", key="preview_img_table_tab3"):
                 st.subheader("Preview")
@@ -302,8 +302,10 @@ def main():
                                     # Open the source Word document
                                     src_doc = Document(table_mapping[img_name])
 
-                                    # Copy all tables from source document
-                                    for src_table in src_doc.tables:
+                                    # Get the first table from source document
+                                    if src_doc.tables:
+                                        src_table = src_doc.tables[0]
+
                                         # Create new table in right cell
                                         new_table = right_cell.add_table(
                                             rows=len(src_table.rows),
@@ -314,19 +316,24 @@ def main():
                                         for i, row in enumerate(src_table.rows):
                                             for j, cell in enumerate(row.cells):
                                                 new_cell = new_table.cell(i, j)
-                                                new_cell.text = cell.text
-                                                set_cell_borders(new_cell, border_color)
+                                                # Clear existing paragraphs to avoid duplication
+                                                for para in new_cell.paragraphs:
+                                                    p = para._element
+                                                    p.getparent().remove(p)
 
-                                                # Copy paragraph formatting
-                                                for src_para in cell.paragraphs:
+                                                # Copy text and formatting
+                                                for para in cell.paragraphs:
                                                     new_para = new_cell.add_paragraph()
-                                                    for run in src_para.runs:
+                                                    for run in para.runs:
                                                         new_run = new_para.add_run(run.text)
                                                         new_run.bold = run.bold
                                                         new_run.italic = run.italic
                                                         new_run.underline = run.underline
-                                                        new_run.font.name = run.font.name
-                                                        new_run.font.size = run.font.size
+                                                        new_run.font.name = run.font.name or 'Times New Roman'
+                                                        new_run.font.size = run.font.size or Pt(12)
+
+                                                # Set black borders
+                                                set_cell_borders(new_cell)
 
                                 except Exception as e:
                                     right_cell.text = f"Error loading table: {str(e)}"
@@ -350,7 +357,6 @@ def main():
 
                     except Exception as e:
                         st.error(f"Error creating document: {str(e)}")
-
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
     main()
