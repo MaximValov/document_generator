@@ -11,6 +11,7 @@ from PIL import Image
 import tempfile
 import base64
 
+
 def load_substitution_rules(sub_file):
     """Load substitution rules from Excel file (columns: old, new)"""
     try:
@@ -21,6 +22,7 @@ def load_substitution_rules(sub_file):
     except Exception as e:
         st.error(f"Error loading substitution file: {str(e)}")
         return {}
+
 
 def process_dataframe(df, sub_dict, remove_last_n_rows, remove_cols, round_decimals):
     """Apply all transformations to the dataframe"""
@@ -33,9 +35,10 @@ def process_dataframe(df, sub_dict, remove_last_n_rows, remove_cols, round_decim
         processed_df = processed_df.drop(cols_to_drop, axis=1)
     if sub_dict:
         processed_df.columns = [str(col) for col in processed_df.columns]
-        for old, new in sub_dict.items():
-            processed_df.columns = [col.replace(str(old), str(new)) for col in processed_df.columns]
-        processed_df = processed_df.replace(sub_dict, regex=True)
+        # Only replace exact matches in column names
+        processed_df.columns = [sub_dict.get(col, col) for col in processed_df.columns]
+        # Only replace exact matches in cell values
+        processed_df = processed_df.applymap(lambda x: sub_dict.get(x, x))
     if round_decimals is not None:
         for col in processed_df.select_dtypes(include=['number']).columns:
             processed_df[col] = processed_df[col].apply(
@@ -61,7 +64,9 @@ def add_image_to_cell(cell, image_path, width_cm, height_cm=None, filename=None,
         run.font.name = 'Times New Roman'
         run.font.size = Pt(10)
 
-def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, table_width_percent, height_cm=None, show_filename=True):
+
+def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, table_width_percent, height_cm=None,
+                           show_filename=True):
     """Create a Word document with an image table"""
     doc = Document()
     style = doc.styles['Normal']
@@ -71,7 +76,7 @@ def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, 
 
     img_table = doc.add_table(rows=table_rows, cols=table_cols)
     img_table.autofit = False
-    
+
     # Set table width as percentage
     tbl_pr = img_table._tblPr
     tbl_width = OxmlElement('w:tblW')
@@ -106,6 +111,7 @@ def create_image_table_doc(image_files, table_rows, table_cols, image_width_cm, 
                 os.unlink(tmp_path)
                 img_count += 1
     return doc
+
 
 def create_image_table_preview(image_files, table_rows, table_cols, width_cm, height_cm=None, show_filename=True):
     """Create a properly working HTML preview of the image table"""
@@ -144,6 +150,7 @@ def create_image_table_preview(image_files, table_rows, table_cols, width_cm, he
                 with cols[col]:
                     st.write("")
 
+
 def convert_excel_to_word(df):
     """Convert DataFrame to Word document with borders"""
     doc = Document()
@@ -181,6 +188,7 @@ def convert_excel_to_word(df):
     doc.save(buffer)
     buffer.seek(0)
     return buffer
+
 
 def main():
     st.title("Document Generator")
@@ -250,7 +258,7 @@ def main():
     with tab2:
         st.header("Image Table Generator")
         image_files = st.file_uploader("Upload images for the table",
-                                       type=["png", "jpg", "jpeg","bmp"],
+                                       type=["png", "jpg", "jpeg", "bmp"],
                                        accept_multiple_files=True,
                                        key="image_uploader")
 
@@ -263,7 +271,7 @@ def main():
                     table_cols = st.number_input("Table columns", 1, 10, min(3, len(image_files)), key="img_cols")
                 with cols[2]:
                     table_width_percent = st.number_input("Table width (%)", 1, 100, 100, 1, key="table_width_percent")
-                
+
                 cols = st.columns(2)
                 with cols[0]:
                     image_width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm")
@@ -296,14 +304,14 @@ def main():
                 with st.spinner("Creating document..."):
                     try:
                         doc = create_image_table_doc(
-    image_files,
-    table_rows,
-    table_cols,
-    image_width_cm,
-    table_width_percent,  # Changed from table_width_cm
-    height_cm,
-    show_filename
-)
+                            image_files,
+                            table_rows,
+                            table_cols,
+                            image_width_cm,
+                            table_width_percent,  # Changed from table_width_cm
+                            height_cm,
+                            show_filename
+                        )
                         st.success("Image table created successfully!")
 
                         # Extract the name of the first image file without extension
@@ -325,6 +333,7 @@ def main():
                         )
                     except Exception as e:
                         st.error(f"Error creating image table: {str(e)}")
+
 
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
