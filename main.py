@@ -265,85 +265,86 @@ def main():
                 except Exception as e:
                     st.error(f"Error processing {data_file.name}: {str(e)}")
 
-    with tab2:
-        st.header("Image Table Generator")
-        image_files = st.file_uploader("Upload images for the table",
-                                       type=["png", "jpg", "jpeg", "bmp"],
-                                       accept_multiple_files=True,
-                                       key="image_uploader")
+        with tab2:
+            st.header("Image Table Generator")
+            image_files = st.file_uploader("Upload images for the table",
+                                           type=["png", "jpg", "jpeg", "bmp"],
+                                           accept_multiple_files=True,
+                                           key="image_uploader")
 
-        if image_files:
-            with st.expander("Image Table Configuration", expanded=True):
-                cols = st.columns(3)
-                with cols[0]:
-                    table_rows = st.number_input("Table rows", 1, 20, 1, key="img_rows")
-                with cols[1]:
-                    table_cols = st.number_input("Table columns", 1, 10, min(3, len(image_files)), key="img_cols")
-                with cols[2]:
-                    table_width_percent = st.number_input("Table width (%)", 1, 100, 100, 1, key="table_width_percent")
+            if image_files:
+                with st.expander("Image Table Configuration", expanded=True):
+                    cols = st.columns(3)
+                    with cols[0]:
+                        table_rows = st.number_input("Table rows", 1, 20, 1, key="img_rows")
+                    with cols[1]:
+                        table_cols = st.number_input("Table columns", 1, 10, min(3, len(image_files)), key="img_cols")
+                    with cols[2]:
+                        table_width_percent = st.number_input("Table width (%)", 1, 100, 100, 1,
+                                                              key="table_width_percent")
 
-                cols = st.columns(2)
-                with cols[0]:
-                    image_width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm")
-                with cols[1]:
-                    fixed_height = st.checkbox("Fixed height", key="fixed_height")
-                    if fixed_height:
-                        height_cm = st.number_input("Image height (cm)", 0.5, 30.0, 5.0, 0.1, key="img_height_cm")
-                    else:
-                        height_cm = None
-                show_filename = st.checkbox("Show filename", value=True, key="show_filename")
+                    cols = st.columns(2)
+                    with cols[0]:
+                        image_width_cm = st.number_input("Image width (cm)", 0.5, 30.0, 5.0, 0.1, key="img_width_cm")
+                    with cols[1]:
+                        fixed_height = st.checkbox("Fixed height", key="fixed_height")
+                        if fixed_height:
+                            height_cm = st.number_input("Image height (cm)", 0.5, 30.0, 5.0, 0.1, key="img_height_cm")
+                        else:
+                            height_cm = None
+                    show_filename = st.checkbox("Show filename", value=True, key="show_filename")
 
-            if st.button("Preview Image Table", key="preview_img_table"):
-                with st.spinner("Generating preview..."):
-                    try:
-                        st.subheader("Table Preview")
-                        create_image_table_preview(
-                            image_files,
-                            table_rows,
-                            table_cols,
-                            image_width_cm,
-                            height_cm,
-                            show_filename
-                        )
-                        st.info(
-                            "Note: This is an approximation of how the table will look in Word.")
-                    except Exception as e:
-                        st.error(f"Error generating preview: {str(e)}")
+                if st.button("Preview Image Table", key="preview_img_table"):
+                    with st.spinner("Generating preview..."):
+                        try:
+                            st.subheader("Table Preview")
+                            create_image_table_preview(
+                                image_files,
+                                table_rows,
+                                table_cols,
+                                image_width_cm,
+                                height_cm,
+                                show_filename
+                            )
+                            st.info(
+                                "Note: This is an approximation of how the table will look in Word.")
+                        except Exception as e:
+                            st.error(f"Error generating preview: {str(e)}")
 
-            if st.button("Generate Image Table Document", key="generate_img_table"):
-                with st.spinner("Creating document..."):
-                    try:
-                        doc = create_image_table_doc(
-                            image_files,
-                            table_rows,
-                            table_cols,
-                            image_width_cm,
-                            table_width_percent,  # Changed from table_width_cm
-                            height_cm,
-                            show_filename
-                        )
-                        st.success("Image table created successfully!")
+                if st.button("Generate Image Table Document", key="generate_img_table"):
+                    with st.spinner("Creating document..."):
+                        try:
+                            doc = create_image_table_doc(
+                                image_files,
+                                table_rows,
+                                table_cols,
+                                image_width_cm,
+                                table_width_percent,  # Changed from table_width_cm
+                                height_cm,
+                                show_filename
+                            )
+                            st.success("Image table created successfully!")
 
-                        # Extract the name of the first image file without extension
-                        first_image_name = os.path.splitext(image_files[0].name)[0]
-                        file_name = f"{first_image_name}.docx"
+                            # Extract the name of the first image file without extension
+                            first_image_name = os.path.splitext(image_files[0].name)[0]
+                            file_name = f"{first_image_name}.docx"
 
-                        # Save the document to a BytesIO buffer
-                        buffer = BytesIO()
-                        doc.save(buffer)
-                        buffer.seek(0)
+                            # Save the document to a BytesIO buffer
+                            buffer = BytesIO()
+                            doc.save(buffer)
+                            buffer.seek(0)
 
-                        # Provide the document for download
-                        st.download_button(
-                            label="Download Word Document",
-                            data=buffer,
-                            file_name=file_name,
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key="download_img_table"
-                        )
-                    except Exception as e:
-                        st.error(f"Error creating image table: {str(e)}")
-
+                            # Provide the document for download
+                            st.download_button(
+                                label="Download Word Document",
+                                data=buffer,
+                                file_name=file_name,
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                key="download_img_table"
+                            )
+                        except Exception as e:
+                            st.error(f"Error creating image table: {str(e)}")
+    
     with tab3:
         st.header("Image + Word Table Generator")
         image_files = st.file_uploader("Upload images for the left column",
