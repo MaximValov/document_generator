@@ -190,17 +190,16 @@ def convert_excel_to_word(df):
     return buffer
 
 def set_cell_borders(cell):
-    """Set cell borders with black color"""
+    """Set cell borders with 0.5pt black borders"""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     for border_name in ['top', 'left', 'bottom', 'right']:
         border = OxmlElement(f'w:{border_name}')
         border.set(qn('w:val'), 'single')
-        border.set(qn('w:sz'), '4')
+        border.set(qn('w:sz'), '4')  # 4 = 0.5pt
         border.set(qn('w:space'), '0')
-        border.set(qn('w:color'), '000000')  # Black color
+        border.set(qn('w:color'), '000000')
         tcPr.append(border)
-
 
 def main():
     st.title("Document Generator")
@@ -259,6 +258,7 @@ def main():
                     else:
                         st.warning(f"No matching table found for image: {img_name}")
 
+
             if st.button("Generate Image + Table Document", key="generate_img_table_tab3"):
                 with st.spinner("Creating document..."):
                     try:
@@ -267,26 +267,37 @@ def main():
                         font = style.font
                         font.name = 'Times New Roman'
                         font.size = Pt(12)
-
+            
                         for img_file in image_files:
                             img_name = os.path.splitext(img_file.name)[0]
                             if img_name in table_mapping:
                                 # Add a new table with 2 columns
                                 table = doc.add_table(rows=1, cols=2)
                                 table.autofit = False
-
-                                # Set table width to 100% of page
+            
+                                # Set table width to 100% of page (fixed)
                                 tbl_pr = table._tblPr
                                 tbl_width = OxmlElement('w:tblW')
-                                tbl_width.set(qn('w:w'), "10000")  # 100% width
+                                tbl_width.set(qn('w:w'), "5000")  # 5000 = 100% width in twentieths of a percent
                                 tbl_width.set(qn('w:type'), 'pct')
                                 tbl_pr.append(tbl_width)
-
+            
                                 # Set column widths
                                 cols = table.columns
                                 cols[0].width = Cm(image_width_cm)
                                 cols[1].width = Cm(table_width_cm)
-
+            
+                                # Set table borders to 0.5pt
+                                tbl_borders = OxmlElement('w:tblBorders')
+                                for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+                                    border = OxmlElement(f'w:{border_name}')
+                                    border.set(qn('w:val'), 'single')
+                                    border.set(qn('w:sz'), '4')  # 4 = 0.5pt
+                                    border.set(qn('w:space'), '0')
+                                    border.set(qn('w:color'), '000000')
+                                    tbl_borders.append(border)
+                                tbl_pr.append(tbl_borders)
+            
                                 # Add image to left cell
                                 left_cell = table.cell(0, 0)
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
@@ -295,23 +306,35 @@ def main():
                                     add_image_to_cell(left_cell, tmp.name, image_width_cm,
                                                       show_filename=show_filename, filename=img_name)
                                     os.unlink(tmp.name)
-
+            
                                 # Add Word table to right cell
                                 right_cell = table.cell(0, 1)
                                 try:
                                     # Open the source Word document
                                     src_doc = Document(table_mapping[img_name])
-
+            
                                     # Get the first table from source document
                                     if src_doc.tables:
                                         src_table = src_doc.tables[0]
-
+            
                                         # Create new table in right cell
                                         new_table = right_cell.add_table(
                                             rows=len(src_table.rows),
                                             cols=len(src_table.columns)
                                         )
-
+            
+                                        # Set table borders to 0.5pt
+                                        new_tbl_pr = new_table._tblPr
+                                        new_tbl_borders = OxmlElement('w:tblBorders')
+                                        for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+                                            border = OxmlElement(f'w:{border_name}')
+                                            border.set(qn('w:val'), 'single')
+                                            border.set(qn('w:sz'), '4')  # 4 = 0.5pt
+                                            border.set(qn('w:space'), '0')
+                                            border.set(qn('w:color'), '000000')
+                                            new_tbl_borders.append(border)
+                                        new_tbl_pr.append(new_tbl_borders)
+            
                                         # Copy content and formatting
                                         for i, row in enumerate(src_table.rows):
                                             for j, cell in enumerate(row.cells):
@@ -320,7 +343,7 @@ def main():
                                                 for para in new_cell.paragraphs:
                                                     p = para._element
                                                     p.getparent().remove(p)
-
+            
                                                 # Copy text and formatting
                                                 for para in cell.paragraphs:
                                                     new_para = new_cell.add_paragraph()
@@ -331,21 +354,21 @@ def main():
                                                         new_run.underline = run.underline
                                                         new_run.font.name = run.font.name or 'Times New Roman'
                                                         new_run.font.size = run.font.size or Pt(12)
-
-                                                # Set black borders
+            
+                                                # Set cell borders to 0.5pt
                                                 set_cell_borders(new_cell)
-
+            
                                 except Exception as e:
                                     right_cell.text = f"Error loading table: {str(e)}"
-
+            
                                 # Add space between items
                                 doc.add_paragraph()
-
+            
                         # Save the document
                         buffer = BytesIO()
                         doc.save(buffer)
                         buffer.seek(0)
-
+            
                         st.success("Document created successfully!")
                         st.download_button(
                             label="Download Word Document",
@@ -354,9 +377,10 @@ def main():
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                             key="download_img_table_tab3"
                         )
-
+            
                     except Exception as e:
                         st.error(f"Error creating document: {str(e)}")
+
 if __name__ == "__main__":
     st.set_page_config(layout="wide")
     main()
