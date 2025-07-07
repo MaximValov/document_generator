@@ -474,6 +474,15 @@ def main():
                                             new_tbl_borders.append(border)
                                         new_tbl_pr.append(new_tbl_borders)
 
+                                        # Set fixed row height of 0.6cm for all rows
+                                        for row in new_table.rows:
+                                            tr_pr = row._tr.get_or_add_trPr()
+                                            tr_height = OxmlElement('w:trHeight')
+                                            tr_height.set(qn('w:val'),
+                                                          str(int(0.6 * 567)))  # Convert cm to twentieths of a point
+                                            tr_height.set(qn('w:hRule'), 'exact')  # Fixed height
+                                            tr_pr.append(tr_height)
+
                                         # Copy content and formatting
                                         for i, row in enumerate(src_table.rows):
                                             for j, cell in enumerate(row.cells):
